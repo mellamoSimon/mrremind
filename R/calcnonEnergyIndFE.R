@@ -222,46 +222,46 @@ calcnonEnergyIndFE <- function() {
 
   # plots for testing----
 
-  for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
-                 region_mapping %>%
-                 filter(region != H12) %>%
-                 pull(region) %>%
-                 unique() %>%
-                 sort()))
-  {
-    browser()
-    p <- ggplot() +
-      geom_point(data = regression_data %>%
-                   filter(region %in% r,
-                          not_censored),
-                 mapping = aes(x = value.added.pC, y = NE.carbon.pC),
-                 colour = 'darkgrey') +
-      geom_line(
-        data = regression_data %>%
-          filter(region %in% r,
-                 not_censored) %>%
-          group_by(region) %>%
-          summarise(min = min(value.added.pC),
-                    max = max(value.added.pC),
-                    .groups = 'keep') %>%
-          mutate(value.added.pC = NA_real_) %>%
-          complete(nesting(region),
-                   value.added.pC = seq(min, max, length.out = 1000)) %>%
-          ungroup() %>%
-          select(-min, -max) %>%
-          inner_join(regression_parameters, 'region') %>%
-          mutate(NE.carbon.pC = intercept + slope * log(value.added.pC)),
-        mapping = aes(x = value.added.pC, y = NE.carbon.pC)) +
-      facet_wrap(~ region, scales = 'free') +
-      scale_x_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      scale_y_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      labs(x = 'per-capita Chemicals Value Added [$]',
-           y = 'per-capita Non-Energy Carbon Use in Chemicals [kgC]') +
-      theme_minimal()
-    plot(p)
-  }
+  # for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
+  #                region_mapping %>%
+  #                filter(region != H12) %>%
+  #                pull(region) %>%
+  #                unique() %>%
+  #                sort()))
+  # {
+  #   browser()
+  #   p <- ggplot() +
+  #     geom_point(data = regression_data %>%
+  #                  filter(region %in% r,
+  #                         not_censored),
+  #                mapping = aes(x = value.added.pC, y = NE.carbon.pC),
+  #                colour = 'darkgrey') +
+  #     geom_path(
+  #       data = regression_data %>%
+  #         filter(region %in% r,
+  #                not_censored) %>%
+  #         group_by(region) %>%
+  #         summarise(min = min(value.added.pC),
+  #                   max = max(value.added.pC),
+  #                   .groups = 'keep') %>%
+  #         mutate(value.added.pC = NA_real_) %>%
+  #         complete(nesting(region),
+  #                  value.added.pC = seq(min, max, length.out = 1000)) %>%
+  #         ungroup() %>%
+  #         select(-min, -max) %>%
+  #         inner_join(regression_parameters, 'region') %>%
+  #         mutate(NE.carbon.pC = intercept + slope * log(value.added.pC)),
+  #       mapping = aes(x = value.added.pC, y = NE.carbon.pC)) +
+  #     facet_wrap(~ region, scales = 'free') +
+  #     scale_x_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     scale_y_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     labs(x = 'per-capita Chemicals Value Added [$]',
+  #          y = 'per-capita Non-Energy Carbon Use in Chemicals [kgC]') +
+  #     theme_minimal()
+  #   plot(p)
+  # }
 
   # projections----
   projection_data <- bind_rows(
@@ -316,151 +316,165 @@ calcnonEnergyIndFE <- function() {
     select(-l, -NE.carbon.pC.world, -NE.carbon.pC)
 
   # more plots----
-  for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
-                 region_mapping %>%
-                 filter(region != H12) %>%
-                 pull(region) %>%
-                 unique() %>%
-                 sort()))
-  {
-    p <- ggplot() +
-      geom_point(data = regression_data %>%
-                   filter(region %in% r,
-                          not_censored),
-                 mapping = aes(x = value.added.pC, y = NE.carbon.pC),
-                 colour = 'darkgrey') +
-      geom_line(
-        data = regression_data %>%
-          filter(region %in% r,
-                 not_censored) %>%
-          group_by(region) %>%
-          summarise(min = min(value.added.pC),
-                    max = max(value.added.pC),
-                    .groups = 'keep') %>%
-          mutate(value.added.pC = NA_real_) %>%
-          complete(nesting(region),
-                   value.added.pC = seq(min, max, length.out = 1000)) %>%
-          ungroup() %>%
-          select(-min, -max) %>%
-          inner_join(regression_parameters, 'region') %>%
-          mutate(NE.carbon.pC = intercept + slope * log(value.added.pC)),
-        mapping = aes(x = value.added.pC, y = NE.carbon.pC)) +
-      geom_line(
-        data = projection_data %>%
-          filter(region %in% r),
-        mapping = aes(x = chemicals.VA / population,
-                      y = NE.carbon / population * 1e9,
-                      colour = SSP)) +
-      scale_colour_discrete(name = NULL) +
-      facet_wrap(~ region, scales = 'free') +
-      scale_x_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      scale_y_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      labs(x = 'per-capita Chemicals Value Added [$]',
-           y = 'per-capita Non-Energy Carbon Use in Chemicals [kgC]') +
-      theme_minimal()
-    plot(p)
-  }
-
-  for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
-                 region_mapping %>%
-                 filter(region != H12) %>%
-                 pull(region) %>%
-                 unique() %>%
-                 sort()))
-  {
-    p <- ggplot() +
-      geom_point(data = regression_data %>%
-                   filter(region %in% r,
-                          not_censored),
-                 mapping = aes(x = value.added.pC * population * 1e-9,
-                               y = NE.carbon.pC * population * 1e-9),
-                 colour = 'darkgrey') +
-      geom_path(
-        data = projection_data %>%
-          filter(region %in% r),
-        mapping = aes(x = chemicals.VA * 1e-9,
-                      y = NE.carbon,
-                      colour = SSP)) +
-      scale_colour_discrete(name = NULL) +
-      facet_wrap(~ region, scales = 'free') +
-      scale_x_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      scale_y_continuous(limits = c(0, NA),
-                         expand = expansion(mult = c(0, 0.05))) +
-      labs(x = 'Chemicals Value Added [$bn]',
-           y = 'Non-Energy Carbon Use in Chemicals [MtC]') +
-      theme_minimal()
-    plot(p)
-  }
-
-  data_plot <- bind_rows(
-    projection_data %>%
-      filter(region %in% unique(region_mapping$H12)) %>%
-      pivot_longer(c('population', 'chemicals.VA',
-                     'NE.carbon')) %>%
-      sum_total(region, name = 'World'),
-
-    projection_data %>%
-      filter(!region %in% unique(region_mapping$H12)) %>%
-      pivot_longer(c('population', 'chemicals.VA',
-                     'NE.carbon'))
-  )
-
-  for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
-                 region_mapping %>%
-                 filter(region != H12) %>%
-                 pull(region) %>%
-                 unique() %>%
-                 sort()))
-    for (n in unique(data_plot$name))
-    {
-      p <- ggplot() +
-        geom_line(
-          data = data_plot %>%
-            filter(2100 >= year,
-                   region %in% r,
-                   n == name),
-          mapping = aes(x = year, y = value, colour = SSP,
-                        alpha = SSP)) +
-        scale_colour_discrete(name = NULL) +
-        scale_alpha_manual(values = c('SDP'  = 0.5,
-                                      'SSP1' = 1,
-                                      'SSP2' = 1,
-                                      'SSP3' = 0.5,
-                                      'SSP4' = 0.5,
-                                      'SSP5' = 1),
-                           guide = 'none') +
-        facet_wrap(~ region, scales = 'free_y') +
-        scale_y_continuous(limits = c(0, NA),
-                           expand = expansion(mult = c(0, 0.05))) +
-        labs(x = NULL, y = 'Index [2020 = 1]', subtitle = n) +
-        theme_minimal()
-      plot(p)
-    }
+  # for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
+  #                region_mapping %>%
+  #                filter(region != H12) %>%
+  #                pull(region) %>%
+  #                unique() %>%
+  #                sort()))
+  # {
+  #   p <- ggplot() +
+  #     geom_point(data = regression_data %>%
+  #                  filter(region %in% r,
+  #                         not_censored),
+  #                mapping = aes(x = value.added.pC, y = NE.carbon.pC),
+  #                colour = 'darkgrey') +
+  #     geom_path(
+  #       data = regression_data %>%
+  #         filter(region %in% r,
+  #                not_censored) %>%
+  #         group_by(region) %>%
+  #         summarise(min = min(value.added.pC),
+  #                   max = max(value.added.pC),
+  #                   .groups = 'keep') %>%
+  #         mutate(value.added.pC = NA_real_) %>%
+  #         complete(nesting(region),
+  #                  value.added.pC = seq(min, max, length.out = 1000)) %>%
+  #         ungroup() %>%
+  #         select(-min, -max) %>%
+  #         inner_join(regression_parameters, 'region') %>%
+  #         mutate(NE.carbon.pC = intercept + slope * log(value.added.pC)),
+  #       mapping = aes(x = value.added.pC, y = NE.carbon.pC)) +
+  #     geom_path(
+  #       data = projection_data %>%
+  #         filter(region %in% r),
+  #       mapping = aes(x = chemicals.VA / population,
+  #                     y = NE.carbon / population * 1e9,
+  #                     colour = SSP)) +
+  #     scale_colour_discrete(name = NULL) +
+  #     facet_wrap(~ region, scales = 'free') +
+  #     scale_x_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     scale_y_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     labs(x = 'per-capita Chemicals Value Added [$]',
+  #          y = 'per-capita Non-Energy Carbon Use in Chemicals [kgC]') +
+  #     theme_minimal()
+  #   plot(p)
+  # }
+  #
+  # for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
+  #                region_mapping %>%
+  #                filter(region != H12) %>%
+  #                pull(region) %>%
+  #                unique() %>%
+  #                sort()))
+  # {
+  #   p <- ggplot() +
+  #     geom_point(data = regression_data %>%
+  #                  filter(region %in% r,
+  #                         not_censored),
+  #                mapping = aes(x = value.added.pC * population * 1e-9,
+  #                              y = NE.carbon.pC * population * 1e-9),
+  #                colour = 'darkgrey') +
+  #     geom_path(
+  #       data = projection_data %>%
+  #         filter(region %in% r),
+  #       mapping = aes(x = chemicals.VA * 1e-9,
+  #                     y = NE.carbon,
+  #                     colour = SSP)) +
+  #     scale_colour_discrete(name = NULL) +
+  #     facet_wrap(~ region, scales = 'free') +
+  #     scale_x_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     scale_y_continuous(limits = c(0, NA),
+  #                        expand = expansion(mult = c(0, 0.05))) +
+  #     labs(x = 'Chemicals Value Added [$bn]',
+  #          y = 'Non-Energy Carbon Use in Chemicals [MtC]') +
+  #     theme_minimal()
+  #   plot(p)
+  # }
+  #
+  # data_plot <- bind_rows(
+  #   projection_data %>%
+  #     filter(region %in% unique(region_mapping$H12)) %>%
+  #     pivot_longer(c('population', 'chemicals.VA',
+  #                    'NE.carbon')) %>%
+  #     sum_total(region, name = 'World'),
+  #
+  #   projection_data %>%
+  #     filter(!region %in% unique(region_mapping$H12)) %>%
+  #     pivot_longer(c('population', 'chemicals.VA',
+  #                    'NE.carbon'))
+  # )
+  #
+  # for (r in list(c(sort(unique(region_mapping$H12)), 'World'),
+  #                region_mapping %>%
+  #                filter(region != H12) %>%
+  #                pull(region) %>%
+  #                unique() %>%
+  #                sort()))
+  #   for (n in unique(data_plot$name))
+  #   {
+  #     p <- ggplot() +
+  #       geom_path(
+  #         data = data_plot %>%
+  #           filter(2100 >= year,
+  #                  region %in% r,
+  #                  n == name),
+  #         mapping = aes(x = year, y = value, colour = SSP,
+  #                       alpha = SSP)) +
+  #       scale_colour_discrete(name = NULL) +
+  #       scale_alpha_manual(values = c('SDP'  = 0.5,
+  #                                     'SSP1' = 1,
+  #                                     'SSP2' = 1,
+  #                                     'SSP3' = 0.5,
+  #                                     'SSP4' = 0.5,
+  #                                     'SSP5' = 1),
+  #                          guide = 'none') +
+  #       facet_wrap(~ region, scales = 'free_y') +
+  #       scale_y_continuous(limits = c(0, NA),
+  #                          expand = expansion(mult = c(0, 0.05))) +
+  #       labs(x = NULL, y = 'Index [2020 = 1]', subtitle = n) +
+  #       theme_minimal()
+  #     plot(p)
+  #   }
 
   # calculate output----
-  c('* description: projections of chemicals non-energy use',
-    '* unit: EJ',
-    paste('* origin: separate script foo.Rmd at',
-          'git@gitlab.pik-potsdam.de:REMIND/EDGE-Industry.git'),
-    paste('* creation date: ', Sys.time())) %>%
-    write_lines(file = 'pm_fe_nechem.cs4r',
-                append = FALSE)
+  # c('* description: projections of chemicals non-energy use',
+  #   '* unit: EJ',
+  #   paste('* origin: separate script foo.Rmd at',
+  #         'git@gitlab.pik-potsdam.de:REMIND/EDGE-Industry.git'),
+  #   paste('* creation date: ', Sys.time())) %>%
+  #   write_lines(file = 'pm_fe_nechem.cs4r',
+  #               append = FALSE)
 
-  d_FE <- read_csv(
-    file = paste0('~/PIK/Remind_input/',
-                  'rev5.983_c1294fae9c9d5988a21bb131054b0fe7_remind/',
-                  'pm_fe_demand.cs4r'),
-    col_names = c('t', 'regi', 'SSP', 'pf', 'value'),
-    col_types = 'icccd',
-    comment = '*') %>%
-    filter(pf %in% c('fesoi', 'fehoi', 'fegai'))
+  # d_FE <- calcOutput(whatever generates pm_fe_demand.cs4r ) %>% etc...
+
+  # d_FE_old <- read_csv(
+  #   file = paste0('old/',
+  #                 'pm_fe_demand.cs4r'),
+  #   col_names = c('t', 'regi', 'SSP', 'pf', 'value'),
+  #   col_types = 'icccd',
+  #   comment = '*') %>%
+  #   filter(pf %in% c('fesoi', 'fehoi', 'fegai'))
+
+
+  d_FE_new <- calcOutput("FEdemand") %>%
+    as.quitte() %>%
+    select(c(-model,-variable,-unit)) %>%
+    filter(item %in% c('fesoi', 'fehoi', 'fegai')) %>%
+    rename(
+      SSP = scenario,
+      pf = item,
+      regi = region,
+      t = period
+    )
+
 
   foo <- IEA_EB %>%
     # select NECHEM data
-    filter(min(d_FE$t) <= year, 'TOTAL' != product, 'NECHEM' == flow,
+    filter(min(d_FE_new$t) <= year, 'TOTAL' != product, 'NECHEM' == flow,
            0 != value) %>%
     rename(period = year) %>%
     # join NECHEM data by product with output mapping to separate
@@ -527,7 +541,7 @@ calcnonEnergyIndFE <- function() {
       select(-factor) %>%
       # limit non-energy share in otherInd to 2015 levels
       left_join(
-        d_FE %>%
+        d_FE_new %>%
           filter(2015 <= t) %>%
           mutate(SSP = sub('^gdp_', '', SSP)) %>%
           select(region = regi, SSP, pf, year = t, otherInd = value),
@@ -541,23 +555,28 @@ calcnonEnergyIndFE <- function() {
       mutate(value = value / pmax(share, first(share)) * first(share)) %>%
       ungroup() %>%
       select(region, SSP, pf, period = year, value)
-  ) %>%
-    filter(period %in% unique(remind_timesteps$period)) %>%
-    mutate(pf = paste0(pf, '_nechem')) %>%
-    select(period, region, SSP, pf, value) %>%
-    arrange(period, region, SSP, pf) %>%
-    write_csv(file = 'pm_fe_nechem.cs4r',
-              append = TRUE,
-              col_names = FALSE)
+  )
+
+  x <- as.magpie(foo)
+
+  # %>%
+  #   filter(period %in% unique(remind_timesteps$period)) %>%
+  #   mutate(pf = paste0(pf, '_nechem')) %>%
+  #   select(period, region, SSP, pf, value) %>%
+  #   arrange(period, region, SSP, pf) %>%
+  #   #this function must not write a file
+  #   write_csv(file = 'pm_fe_nechem.cs4r',
+  #             append = TRUE,
+  #             col_names = FALSE)
 
 
-
+#transform dataframe into magpie class
 
   # assign output----
 
 #  x <- readSource("Calculate here!")
 
-  return(list(x           = foo,
+  return(list(x           = x,
               weight      = NULL,
               unit        = "EJ",
               description = "Final energy demand for feedstocks (non-energy use)"))
