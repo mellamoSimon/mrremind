@@ -12,7 +12,8 @@
 #' @importFrom data.table :=
 #' @importFrom dplyr anti_join arrange as_tibble between bind_rows case_when
 #'   distinct filter first full_join group_by inner_join lag last left_join
-#'   matches mutate n rename right_join select semi_join summarise ungroup
+#'   matches mutate n reframe rename right_join select semi_join summarise
+#'   ungroup
 #' @importFrom magclass mselect getItems getItems<- time_interpolate
 #' @importFrom madrat toolAggregate
 #' @importFrom magrittr %>% %<>%
@@ -28,6 +29,12 @@
 #'
 #' @author Antoine Levesque
 calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
+  # additional scenarios to generate ----
+  additional_scenarios <- c(
+    paste0("gdp_SSP2EU_NAV_",   c("act", "tec", "ele", "lce", "all")),
+    paste0("gdp_SSP2EU_CAMP_",  c("weak", "strong")),
+    paste0("gdp_SSP2EU_ECEMF_", c("modEffInd", "IndLMD")),
+    paste0("gdp_SSP2EU_GCS_",   c("IndLMD")))
 
     #----- Functions ------------------
     getScens = function(mag) {
@@ -772,6 +779,29 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
 
 
       # ---- Industry subsectors data and FE stubs ----
+      .assert_error_fun <- function(message, length = 5) {
+        function(errors, data) {
+          x <- paste(c(
+            message,
+            sapply(errors, getElement, name = 'message'),
+            # data peek
+            data %>%
+              `[`(sapply(errors,
+                         function(x) {
+                           head(x[['error_df']][['index']], length)
+                         },
+                         simplify = FALSE) %>%
+                    unlist() %>%
+                    unique(),) %>%
+              format(width = Inf) %>%
+              # strip ANSI codes
+              gsub('\033\\[[0-9;]+m', '', x = .)),
+            collapse = '\n')
+          dput(x)
+          stop(x, call. = FALSE)
+        }
+      }
+
       ## subsector activity projections ----
       industry_subsectors_ue <- mbind(
         calcOutput(
@@ -890,13 +920,15 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
         industry_subsectors_ue %>%
           as.data.frame() %>%
           as_tibble() %>%
-          select(iso3c = 'Region', year = 'Year', scenario = 'Data1', subsector = 'Data2', value = 'Value') %>%
+          select(iso3c = 'Region', year = 'Year', scenario = 'Data1',
+                 subsector = 'Data2', value = 'Value') %>%
           character.data.frame() %>%
           mutate(year = as.integer(.data$year)) %>%
           # remove zero activity from historic data, to be extended backwards by
           # first projection below
           filter(!(0 == .data$value & 2020 >= .data$year)) %>%
-          verify(expr = .data$value != 0, description = 'No zero subsector activity after 2020'),
+          verify(expr = .data$value != 0,
+                 description = 'No zero subsector activity after 2020'),
         GDP,
         by = c('iso3c', 'year', 'scenario')
       ) %>%
@@ -916,6 +948,16 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
                             order_by = .data$year[!is.na(.data$value)]))
         ) %>%
         ungroup()
+
+      # extend gdp_SSP2EU to additional scenarios
+      foo <- bind_rows(
+        foo,
+
+        foo %>%
+          filter('gdp_SSP2EU' == .data$scenario) %>%
+          reframe(scenario = additional_scenarios,
+                         .by = -'scenario')
+      )
 
       region_mapping_21 <- toolGetMapping('regionmapping_21_EU11.csv', 'regional', where = "mappingfolder") %>%
         as_tibble() %>%
@@ -939,7 +981,8 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
       industry_subsectors_material_relative <- calcOutput(
         type = 'industry_subsectors_specific', subtype = 'material_relative',
         scenarios = c(getNames(x = industry_subsectors_ue, dim = 1),
-                      'gdp_SSP2_lowEn'),
+                      'gdp_SSP2_lowEn',
+                      additional_scenarios),
         regions = unique(region_mapping_21$region),
         aggregate = FALSE
       ) %>%
@@ -993,9 +1036,14 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
       }
 
       bind_rows(
-        industry_subsectors_material_alpha %>% select('scenario', 'region', 'subsector'),
-        industry_subsectors_material_relative %>% select('scenario', 'region', 'subsector'),
-        industry_subsectors_material_relative_change %>% select('scenario', 'region', 'subsector')
+        industry_subsectors_material_alpha %>%
+          select('scenario', 'region', 'subsector'),
+
+        industry_subsectors_material_relative %>%
+          select('scenario', 'region', 'subsector'),
+
+        industry_subsectors_material_relative_change %>%
+          select('scenario', 'region', 'subsector')
       ) %>%
         group_by(!!!syms(c('scenario', 'region', 'subsector'))) %>%
         summarise(count = n(), .groups = 'drop') %>%
@@ -1113,7 +1161,10 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
 
             c('scenario', 'subsector', 'iso3c', 'year')
           ) %>%
-          assert(not_na, everything()) %>%
+          assert(not_na, everything(),
+                 error_fun = .assert_error_fun(
+                   message = 'missing specific production relative baseline',
+                   length = 10)) %>%
           # scale factor in from 2020-35
           mutate(l = pmin(1, pmax(0, (.data$year - 2020) / (2035 - 2020))),
                  value = .data$specific.production
@@ -1701,7 +1752,8 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
       industry_subsectors_specific_FE <- calcOutput(
         type = 'industry_subsectors_specific', subtype = 'FE',
         scenarios = c(getNames(x = industry_subsectors_ue, dim = 1),
-                      'gdp_SSP2_lowEn'),
+                      'gdp_SSP2_lowEn',
+                      additional_scenarios),
         regions = unique(region_mapping_21$region),
         aggregate = FALSE
       ) %>%
@@ -1987,18 +2039,15 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
       industryItems <- grep("(.*i$)|chemicals|steel|otherInd|cement",
                             getItems(reminditems, 3.2), value = TRUE)
       nonIndustryItems <- setdiff(getItems(reminditems, 3.2), industryItems)
-      duplScenarios <- grep("SSP2EU_(NAV|CAMP|ECEMF|GCS)_", getItems(reminditems, 3.1), value = TRUE)
+      duplScenarios <- grep("SSP2EU_(NAV|CAMP|ECEMF|GCS)_",
+                            getItems(reminditems, 3.1), value = TRUE)
       nonDuplScenarios <- setdiff(getItems(reminditems, 3.1), duplScenarios)
       reminditems <- mbind(
         mselect(reminditems, scenario = nonDuplScenarios),
         mselect(reminditems, scenario = duplScenarios, item = nonIndustryItems),
-        addDim(mselect(reminditems, scenario = "gdp_SSP2EU", item = industryItems,
-                       collapseNames = TRUE),
-               c(paste0("gdp_SSP2EU_NAV_", c("act", "tec", "ele", "lce", "all")),
-                 paste0("gdp_SSP2EU_CAMP_", c("weak", "strong")),
-                 paste0("gdp_SSP2EU_ECEMF_", c("modEffInd", "IndLMD")),
-                 paste0("gdp_SSP2EU_GCS_", c("IndLMD"))),
-               "scenario", 3.1)
+        addDim(mselect(reminditems, scenario = "gdp_SSP2EU",
+                       item = industryItems, collapseNames = TRUE),
+               additional_scenarios, "scenario", 3.1)
       )
     }
 
