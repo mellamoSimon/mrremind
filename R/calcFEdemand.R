@@ -2039,15 +2039,37 @@ calcFEdemand <- function(subtype = "FE", use_ODYM_RECC = FALSE) {
       industryItems <- grep("(.*i$)|chemicals|steel|otherInd|cement",
                             getItems(reminditems, 3.2), value = TRUE)
       nonIndustryItems <- setdiff(getItems(reminditems, 3.2), industryItems)
-      duplScenarios <- grep("SSP2EU_(NAV|CAMP|ECEMF|GCS)_",
+      duplScenarios <- grep("SSP2EU_(NAV|CAMP)_",
                             getItems(reminditems, 3.1), value = TRUE)
-      nonDuplScenarios <- setdiff(getItems(reminditems, 3.1), duplScenarios)
+      nonDuplScenarios <- setdiff(getItems(reminditems, 3.1),
+                                  additional_scenarios)
       reminditems <- mbind(
+        # complete scenarios
         mselect(reminditems, scenario = nonDuplScenarios),
+
+        # scenarios that need industry values duplicated
         mselect(reminditems, scenario = duplScenarios, item = nonIndustryItems),
         addDim(mselect(reminditems, scenario = "gdp_SSP2EU",
                        item = industryItems, collapseNames = TRUE),
-               additional_scenarios, "scenario", 3.1)
+               duplScenarios, "scenario", 3.1),
+
+        # scenarios that need buildings/transport values duplicated
+        mselect(reminditems,
+                scenario = grep('(ECEMF|GCS)', getItems(reminditems, 3.1),
+                                value = TRUE)),
+
+        addDim(mselect(reminditems, scenario = 'gdp_SSP2EU',
+                       item = setdiff(
+                         getItems(reminditems[,,'gdp_SSP2EU'], 3.2),
+                         getItems(
+                           mselect(reminditems,
+                                   scenario = grep('(ECEMF|GCS)',
+                                                   getItems(reminditems, 3.1),
+                                                   value = TRUE)),
+                           3.2)),
+                       collapseNames = TRUE),
+               grep('(ECEMF|GCS)', getItems(reminditems, 3.1), value = TRUE),
+               'scenario', 3.1)
       )
     }
 
